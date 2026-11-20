@@ -240,7 +240,30 @@ systemctl --user enable --now \
 
 # ---------------------------------------------------------------------------
 log "Keyboard: GB layout, Caps Lock = Ctrl, Right Alt = Compose (login screen + console)"
-sudo localectl set-x11-keymap gb pc105 "" ctrl:nocaps,compose:ralt
+# Edit /etc/default/keyboard directly: GDM (via localed), the console
+# (console-setup) and the initramfs all read it. `localectl set-x11-keymap`
+# fails with "Access denied" here, so we don't go through localed.
+set_kbd() {
+  if grep -q "^$1=" /etc/default/keyboard; then
+    sudo sed -i "s|^$1=.*|$1=\"$2\"|" /etc/default/keyboard
+  else
+    echo "$1=\"$2\"" | sudo tee -a /etc/default/keyboard >/dev/null
+  fi
+}
+set_kbd XKBMODEL pc105
+set_kbd XKBLAYOUT gb
+set_kbd XKBVARIANT ""
+set_kbd XKBOPTIONS "ctrl:nocaps,compose:ralt"
+sudo udevadm trigger --subsystem-match=input --action=change || true
+
+# ---------------------------------------------------------------------------
+log "Apple-protocol keyboards: F1-F12 by default, media keys behind Fn"
+# hid_apple defaults to fnmode=3 (auto), which makes media keys primary on
+# keyboards that identify as Apple. The initramfs rebuild below picks this up.
+echo 'options hid_apple fnmode=2' | sudo tee /etc/modprobe.d/hid_apple.conf >/dev/null
+if [ -e /sys/module/hid_apple/parameters/fnmode ]; then
+  echo 2 | sudo tee /sys/module/hid_apple/parameters/fnmode >/dev/null || true
+fi
 
 # ---------------------------------------------------------------------------
 log "Boot splash (plymouth) and quiet boot"
