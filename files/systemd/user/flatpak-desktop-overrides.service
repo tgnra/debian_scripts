@@ -1,0 +1,9 @@
+[Unit]
+Description=Strip file-type associations from Calibre/Obsidian Flatpak launchers
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/flatpak-desktop-overrides
+
+[Install]
+WantedBy=default.target

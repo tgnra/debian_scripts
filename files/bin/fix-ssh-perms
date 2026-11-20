@@ -1,0 +1,27 @@
+#!/bin/sh
+# Fixes ownership and permissions of ~/.ssh.
+#   As root:   fix-ssh-perms USER   (also fixes ownership, e.g. after a sudo copy)
+#   As a user: fix-ssh-perms
+# Only changes what's wrong, so it doesn't retrigger the systemd path unit.
+set -eu
+
+if [ "$(id -u)" -eq 0 ]; then
+  user=${1:?usage: fix-ssh-perms USER}
+  home=$(getent passwd "$user" | cut -d: -f6)
+else
+  user=$(id -un)
+  home=$HOME
+fi
+
+d="$home/.ssh"
+[ -d "$d" ] || exit 0
+[ -L "$d" ] && exit 0   # never follow a symlinked ~/.ssh
+
+if [ "$(id -u)" -eq 0 ]; then
+  find "$d" ! -user "$user" -exec chown -h "$user:" {} +
+fi
+
+# As a user, files owned by root can't be changed; the boot-time service handles those.
+find "$d" -type d ! -perm 700 -exec chmod 700 {} + || true
+find "$d" -type f -name '*.pub' ! -perm 644 -exec chmod 644 {} + || true
+find "$d" -type f ! -name '*.pub' ! -perm 600 -exec chmod 600 {} + || true

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Shadows the Calibre and Obsidian Flatpak launchers with copies in
+# ~/.local/share/applications, so these apps don't claim any file types.
+#  - URL-scheme handlers (obsidian://, calibre://) are kept.
+#  - Calibre's secondary launchers (viewer, editor, LRF viewer) are hidden.
+# Run automatically at login and whenever Flatpak's exported files change,
+# so the copies stay in sync with app updates.
+set -euo pipefail
+
+MARK="# Managed by flatpak-desktop-overrides; regenerated automatically."
+data="${XDG_DATA_HOME:-$HOME/.local/share}"
+dest="$data/applications"
+# User installation first: it takes precedence over the system one.
+exports=("$data/flatpak/exports/share/applications" /var/lib/flatpak/exports/share/applications)
+mkdir -p "$dest"
+
+declare -A seen=()
+
+for dir in "${exports[@]}"; do
+  [[ -d $dir ]] || continue
+  for src in "$dir"/com.calibre_ebook.calibre*.desktop "$dir"/md.obsidian.Obsidian*.desktop; do
+    [[ -e $src ]] || continue
+    id=$(basename "$src")
+    [[ -z ${seen[$id]:-} ]] || continue
+    seen[$id]=1
+
+    hide=0
+    case $id in
+      com.calibre_ebook.calibre.desktop | md.obsidian.Obsidian*) ;;
+      com.calibre_ebook.calibre*) hide=1 ;;
+    esac
+
+    out="$dest/$id"
+    # Leave alone any file you've written yourself.
+    if [[ -e $out ]] && ! grep -qxF "$MARK" "$out"; then
+      continue
+    fi
+
+    {
+      echo "$MARK"
+      awk -v hide="$hide" '
+        /^\[/ {
+          in_main = ($0 == "[Desktop Entry]")
+          print
+          if (in_main && hide) print "Hidden=true"
+          next
+        }
+        in_main && /^MimeType=/ {
+          n = split(substr($0, 10), types, ";")
+          keep = ""
+          for (i = 1; i <= n; i++)
+            if (types[i] ~ /^x-scheme-handler\//) keep = keep types[i] ";"
+          if (keep != "") print "MimeType=" keep
+          next
+        }
+        in_main && hide && /^Hidden=/ { next }
+        { print }
+      ' "$src"
+    } > "$out.tmp"
+    mv "$out.tmp" "$out"
+  done
+done
+
+# Clean up copies for apps that have since been uninstalled.
+for f in "$dest"/*.desktop; do
+  [[ -e $f ]] || continue
+  grep -qxF "$MARK" "$f" || continue
+  [[ -n ${seen[$(basename "$f")]:-} ]] || rm -f "$f"
+done
+
+if command -v update-desktop-database >/dev/null; then
+  update-desktop-database "$dest" || true
+fi

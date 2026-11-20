@@ -1,0 +1,9 @@
+[Unit]
+Description=Fix ~/.ssh permissions whenever files are added or changed
+
+[Path]
+PathChanged=%h/.ssh
+Unit=fix-ssh-perms.service
+
+[Install]
+WantedBy=default.target

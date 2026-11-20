@@ -1,0 +1,12 @@
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+
+Host shuckle
+    HostName 23.88.3.239
+    Port 40357
+    User tania
+    IdentityFile ~/.ssh/id_tinkaton
+    IdentitiesOnly yes

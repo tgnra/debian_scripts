@@ -1,0 +1,10 @@
+[Unit]
+Description=Fix ~/.ssh ownership and permissions for %i
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fix-ssh-perms %i
+
+[Install]
+WantedBy=multi-user.target

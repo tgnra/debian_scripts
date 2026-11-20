@@ -1,0 +1,9 @@
+[Unit]
+Description=Fix ~/.ssh permissions
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fix-ssh-perms
+
+[Install]
+WantedBy=default.target

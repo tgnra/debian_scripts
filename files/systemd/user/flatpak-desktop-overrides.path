@@ -1,0 +1,10 @@
+[Unit]
+Description=Re-apply Flatpak launcher overrides when Flatpak apps change
+
+[Path]
+PathChanged=/var/lib/flatpak/exports/share/applications
+PathChanged=%h/.local/share/flatpak/exports/share/applications
+Unit=flatpak-desktop-overrides.service
+
+[Install]
+WantedBy=default.target
